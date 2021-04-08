@@ -672,6 +672,7 @@ ssize_t __mqtt_recv(struct mqtt_client *client)
             if (client->recv_buffer.curr_sz == 0) {
                 client->error = MQTT_ERROR_RECV_BUFFER_TOO_SMALL;
                 MQTT_PAL_MUTEX_UNLOCK(&client->mutex);
+		printf("[%s %d]....\n", __func__, __LINE__);
                 return MQTT_ERROR_RECV_BUFFER_TOO_SMALL;
             }
 

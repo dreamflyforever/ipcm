@@ -1,7 +1,7 @@
 
 /**
  * @file
- * A simple program to that publishes the current time whenever ENTER is pressed. 
+ * A simple program that subscribes to a topic.
  */
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,9 +12,7 @@
 
 
 /**
- * @brief The function that would be called whenever a PUBLISH is received.
- * 
- * @note This function is not used in this example. 
+ * @brief The function will be called whenever a PUBLISH message is received.
  */
 void publish_callback(void** unused, struct mqtt_response_publish *published);
 
@@ -33,9 +31,6 @@ void* client_refresher(void* client);
  */
 void exit_example(int status, int sockfd, pthread_t *client_daemon);
 
-/**
- * A simple program to that publishes the current time whenever ENTER is pressed. 
- */
 int main(int argc, const char *argv[]) 
 {
     const char* addr;
@@ -73,8 +68,8 @@ int main(int argc, const char *argv[])
 
     /* setup a client */
     struct mqtt_client client;
-    uint8_t sendbuf[2048* 1024]; /* sendbuf should be large enough to hold multiple whole mqtt messages */
-    uint8_t recvbuf[1024]; /* recvbuf should be large enough any whole mqtt message expected to be received */
+    uint8_t sendbuf[2048]; /* sendbuf should be large enough to hold multiple whole mqtt messages */
+    uint8_t recvbuf[1024*1024*5]; /* recvbuf should be large enough any whole mqtt message expected to be received */
     mqtt_init(&client, sockfd, sendbuf, sizeof(sendbuf), recvbuf, sizeof(recvbuf), publish_callback);
     /* Create an anonymous session */
     const char* client_id = NULL;
@@ -97,37 +92,20 @@ int main(int argc, const char *argv[])
 
     }
 
+    /* subscribe */
+    mqtt_subscribe(&client, topic, 0);
+    mqtt_subscribe(&client, "hello", 0);
+    mqtt_subscribe(&client, "world", 0);
+    mqtt_subscribe(&client, "jim", 0);
+    mqtt_subscribe(&client, "test", 0);
+
     /* start publishing the time */
-    printf("%s is ready to begin publishing the time.\n", argv[0]);
-    printf("Press ENTER to publish the current time.\n");
-    printf("Press CTRL-D (or any other key) to exit.\n\n");
-    while(1) {
-        /* get the current time */
-        time_t timer;
-        time(&timer);
-        struct tm* tm_info = localtime(&timer);
-        char timebuf[26];
-        strftime(timebuf, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-
-        /* print a message */
-        char application_message[256];
-        snprintf(application_message, sizeof(application_message), "The time is %s", timebuf);
-        printf("%s published : \"%s\"\n", argv[0], application_message);
-
-        /* publish the time */
-        mqtt_publish(&client, topic, application_message, strlen(application_message) + 1, MQTT_PUBLISH_QOS_0);
-        mqtt_publish(&client, "hello", application_message, strlen(application_message) + 1, MQTT_PUBLISH_QOS_0);
-        mqtt_publish(&client, "world", application_message, strlen(application_message) + 1, MQTT_PUBLISH_QOS_0);
-        mqtt_publish(&client, "jim", application_message, strlen(application_message) + 1, MQTT_PUBLISH_QOS_0);
-        mqtt_publish(&client, "test", application_message, strlen(application_message) + 1, MQTT_PUBLISH_QOS_0);
-
-        /* check for errors */
-        if (client.error != MQTT_OK) {
-            fprintf(stderr, "error: %s\n", mqtt_error_str(client.error));
-            exit_example(EXIT_FAILURE, sockfd, &client_daemon);
-        }
-    }   
-
+    printf("%s listening for '%s' messages.\n", argv[0], topic);
+    printf("Press CTRL-D to exit.\n\n");
+    
+    /* block */
+    while(fgetc(stdin) != EOF); 
+    
     /* disconnect */
     printf("\n%s disconnecting from %s\n", argv[0], addr);
     sleep(1);
@@ -147,7 +125,15 @@ void exit_example(int status, int sockfd, pthread_t *client_daemon)
 
 void publish_callback(void** unused, struct mqtt_response_publish *published) 
 {
-    /* not used in this example */
+    /* note that published->topic_name is NOT null-terminated (here we'll change it to a c-string) */
+    char* topic_name = (char*) malloc(published->topic_name_size + 1);
+    memcpy(topic_name, published->topic_name, published->topic_name_size);
+    topic_name[published->topic_name_size] = '\0';
+
+    printf("Received publish('%s'): %s\n", topic_name, (const char*) published->application_message);
+
+    free(topic_name);
+    usleep(100);
 }
 
 void* client_refresher(void* client)
