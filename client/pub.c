@@ -18,8 +18,10 @@ int main(void)
 	sub("hello", hello_cb);
 	sub("world", world_cb);
 	while (1) {
-		printf("hello world\n");
-		sleep(1);
+		usleep(10000);
+		pub("hello", "12344", 5);
+		usleep(10000);
+		pub("world", "22344", 5);
 	};
 	return 0;
 }
