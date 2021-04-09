@@ -1,21 +1,24 @@
-// Copyright (c) 2020 Cesanta Software Limited
-// All rights reserved
-//
-// Example MQTT client. It performs the following steps:
-//    1. Connects to the MQTT server specified by `s_url` variable
-//    2. When connected, subscribes to the topic `s_topic`
-//    3. Publishes message `hello` to the `s_topic`
-//    4. Receives that message back from the subscribed topic and exits
-//
-// To enable SSL/TLS for this client, build it like this:
-//    make MBEDTLS_DIR=/path/to/your/mbedtls/installation
-
 #include "api.h"
+
+int hello_cb(int fd, char *data, int len)
+{
+	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
+	return 0;
+}
+
+int world_cb(int fd, char *data, int len)
+{
+	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
+	return 0;
+}
 
 int main(void)
 {
 	mqtt_init();
+	sub("hello", hello_cb);
+	sub("world", world_cb);
 	while (1) {
+		printf("hello world\n");
 		sleep(1);
 	};
 	return 0;

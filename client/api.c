@@ -1,6 +1,9 @@
-
 #include <pthread.h>
 #include "api.h"
+
+static pthread_mutex_t node_mutex;
+#define  node_lock() pthread_mutex_unlock(&node_mutex)
+#define  node_unlock() pthread_mutex_lock(&node_mutex);
 
 static const char *s_url = "mqtt://0.0.0.0:1883";
 static const char *s_topic = "mg/test";
@@ -22,7 +25,9 @@ int pub(char *topic, char *data, int len)
 	struct mg_str topic_str = mg_str(topic), data_n = mg_str_n(data, len);
 
 	/*XXX:return*/
+	node_lock();
 	mg_mqtt_pub(node_obj.mgc, &topic_str, &data_n);
+	node_unlock();
 _OUT:
 	return retval;
 }
@@ -38,6 +43,8 @@ int sub(char *topic, sub_cb cb)
 		i++;
 		if (i >= 10) goto _OUT;
 	}
+
+	node_lock();
 	node_obj.sub_obj[node_obj.sub_index].topic = malloc(len+1);
 	strncpy(node_obj.sub_obj[node_obj.sub_index].topic, topic, len);
 	node_obj.sub_obj[node_obj.sub_index].cb = cb;
@@ -48,6 +55,7 @@ int sub(char *topic, sub_cb cb)
 	}
 	struct mg_str topic_str = mg_str(topic);
 	mg_mqtt_sub(node_obj.mgc, &topic_str);
+	node_unlock();
 _OUT:
 	return retval;
 }
@@ -55,6 +63,12 @@ _OUT:
 /*block the process*/
 int mqtt_init(void)
 {
+	int retval = 0;
+	retval = pthread_mutex_init(&node_mutex, NULL);
+	if (retval != 0) {
+		printf("mutex init failed\n");
+		return -1;
+	}
 	if (pthread_create(&_node_thread,
 		NULL, _node_loop, NULL)
 		!= 0) {
@@ -62,7 +76,8 @@ int mqtt_init(void)
         	exit(1);
 	}
 	printf("node thread create success\n");
-	return 0;
+	while (node_obj.state == false);
+	return retval;
 }
 
 int mqtt_deinit(void)
@@ -74,19 +89,10 @@ int mqtt_deinit(void)
 		free(node_obj.sub_obj[i].topic);
 	}
 	/*destroy node thread*/
+
+	pthread_mutex_destroy(&node_mutex);
 }
 
-int hello_cb(int fd, char *data, int len)
-{
-	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
-	return 0;
-}
-
-int world_cb(int fd, char *data, int len)
-{
-	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
-	return 0;
-}
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	if (ev == MG_EV_ERROR) {
 		// On error, log error message
@@ -103,8 +109,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		struct mg_str topic = mg_str(s_topic), data = mg_str("hello");
 		LOG(LL_INFO, ("CONNECTED to %s", s_url));
 		mg_mqtt_sub(c, &topic);
-		sub("hello", hello_cb);
-		sub("world", world_cb);
 		LOG(LL_INFO, ("SUBSCRIBED to %.*s", (int) topic.len, topic.ptr));
 		mg_mqtt_pub(c, &topic, &data);
 		LOG(LL_INFO, ("PUBSLISHED %.*s -> %.*s", (int) data.len, data.ptr,
