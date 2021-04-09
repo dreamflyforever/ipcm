@@ -55,11 +55,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 		//			(int) mm->topic.len, mm->topic.ptr));
 		int i;
 		for (i = 0; i <= SUB_COUNT; i++) {
-			if (sub_obj[i].topic != NULL) {
-				if (0 == strncmp(sub_obj[i].topic, mm->topic.ptr,
-					(strlen(sub_obj[i].topic)-1))) {
-					if (sub_obj[i].cb != NULL) {
-						sub_obj[i].cb(0, (char *)mm->data.ptr, mm->data.len);
+			if (node_obj.sub_obj[i].topic != NULL) {
+				if (0 == strncmp(node_obj.sub_obj[i].topic, mm->topic.ptr,
+					(strlen(node_obj.sub_obj[i].topic)-1))) {
+					if (node_obj.sub_obj[i].cb != NULL) {
+						node_obj.sub_obj[i].cb(0, (char *)mm->data.ptr, mm->data.len);
 						goto _OUT;
 					}
 				}
@@ -75,23 +75,36 @@ _OUT:
 	return ;
 }
 
-int main(void)
+
+/*block the process*/
+int mqtt_init(void)
 {
-	struct mg_mgr mgr;         // Event manager
+	node_obj.state = false;
 	struct mg_mqtt_opts opts;  // MQTT connection options
 	bool done = false;         // Event handler flips it to true when done
-	mg_mgr_init(&mgr);         // Initialise event manager
+	mg_mgr_init(&(node_obj.mgr));         // Initialise event manager
 	memset(&opts, 0, sizeof(opts));                 // Set MQTT options
 	opts.qos = 1;                                   // Set QoS to 1
 	opts.will_topic = mg_str(s_topic);              // Set last will topic
 	opts.will_message = mg_str("goodbye");          // And last will message
-	mgc = mg_mqtt_connect(&mgr, s_url, &opts, fn, &done);  // Create client connection
-	while (done == false) mg_mgr_poll(&mgr, 1000);  // Event loop
-	mg_mgr_free(&mgr);                              // Finished, cleanup
+	node_obj.mgc = mg_mqtt_connect(&(node_obj.mgr), s_url, &opts, fn, &done);  // Create client connection
+	while (done == false) mg_mgr_poll(&(node_obj.mgr), 1000);  // Event loop
+	node_obj.state = true;
 	return 0;
 }
 
 int mqtt_deinit()
 {
+	int i;
+	node_obj.state = false;
+	mg_mgr_free(&(node_obj.mgr));
+	for (i = 0; i <= node_obj.sub_index; i++) {
+		free(node_obj.sub_obj[i].topic);
+	}
+}
 
+int main(void)
+{
+	mqtt_init();
+	return 0;
 }

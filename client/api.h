@@ -6,9 +6,18 @@ struct sub_str {
 	char *topic;
 	sub_cb cb;
 };
-extern struct sub_str sub_obj[SUB_COUNT];
-extern struct mg_connection *mgc;
+
+struct node_str {
+	int sub_index;
+	struct sub_str sub_obj[SUB_COUNT];
+	struct mg_connection *mgc;
+	struct mg_mgr mgr;         // Event manager
+	bool state;
+
+};
+extern struct node_str node_obj;
 
 int sub(char *topic, sub_cb cb);
-
 int pub(char *topic, char *data, int len);
+int mqtt_init();
+int mqtt_deinit();
