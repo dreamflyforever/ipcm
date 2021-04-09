@@ -19,5 +19,5 @@ extern struct node_str node_obj;
 
 int sub(char *topic, sub_cb cb);
 int pub(char *topic, char *data, int len);
-int mqtt_init();
-int mqtt_deinit();
+int mqtt_init(void);
+int mqtt_deinit(void);
