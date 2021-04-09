@@ -18,13 +18,13 @@ static const char *s_topic = "mg/test";
 
 int hello_cb(int fd, char *data, int len)
 {
-	printf("%s %d\n", __func__, __LINE__);
+	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
 	return 0;
 }
 
 int world_cb(int fd, char *data, int len)
 {
-	printf("%s %d\n", __func__, __LINE__);
+	printf("[%s %d]data: %.*s\n", __func__, __LINE__, len, data);
 	return 0;
 }
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
@@ -38,7 +38,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 			mg_tls_init(c, &opts);
 		}
 	} else if (ev == MG_EV_MQTT_OPEN) {
-		mgc = c;
 		// MQTT connect is successful
 		struct mg_str topic = mg_str(s_topic), data = mg_str("hello");
 		LOG(LL_INFO, ("CONNECTED to %s", s_url));
@@ -52,16 +51,15 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	} else if (ev == MG_EV_MQTT_MSG) {
 		// When we get echo response, print it
 		struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-		LOG(LL_INFO, ("RECEIVED %.*s <- %.*s", (int) mm->data.len, mm->data.ptr,
-					(int) mm->topic.len, mm->topic.ptr));
+		//LOG(LL_INFO, ("RECEIVED %.*s <- %.*s", (int) mm->data.len, mm->data.ptr,
+		//			(int) mm->topic.len, mm->topic.ptr));
 		int i;
 		for (i = 0; i <= SUB_COUNT; i++) {
 			if (sub_obj[i].topic != NULL) {
 				if (0 == strncmp(sub_obj[i].topic, mm->topic.ptr,
 					(strlen(sub_obj[i].topic)-1))) {
 					if (sub_obj[i].cb != NULL) {
-						sub_obj[i].cb(0, mm->data.ptr, mm->data.len);
-						printf("sub cb call\n");
+						sub_obj[i].cb(0, (char *)mm->data.ptr, mm->data.len);
 						goto _OUT;
 					}
 				}
@@ -91,4 +89,9 @@ int main(void)
 	while (done == false) mg_mgr_poll(&mgr, 1000);  // Event loop
 	mg_mgr_free(&mgr);                              // Finished, cleanup
 	return 0;
+}
+
+int mqtt_deinit()
+{
+
 }
