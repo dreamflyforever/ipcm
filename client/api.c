@@ -2,9 +2,13 @@
 #include "api.h"
 
 static pthread_mutex_t node_mutex;
-#define  node_lock() pthread_mutex_unlock(&node_mutex)
-#define  node_unlock() pthread_mutex_lock(&node_mutex);
-
+#if 1
+#define  node_lock()  pthread_mutex_lock(&node_mutex); printf("[%s %d]lock\n", __func__, __LINE__)
+#define  node_unlock()  pthread_mutex_unlock(&node_mutex); printf("[%s %d]unlock\n", __func__, __LINE__)
+#else
+#define  node_lock()  pthread_mutex_lock(&node_mutex); 
+#define  node_unlock()  pthread_mutex_unlock(&node_mutex);
+#endif
 static const char *s_url = "mqtt://0.0.0.0:1883";
 static const char *s_topic = "mg/test";
 
@@ -26,6 +30,7 @@ int pub(char *topic, char *data, int len)
 
 	/*XXX:return*/
 	node_lock();
+	//printf("[%s %d] pub : %s\n", __func__, __LINE__, topic);
 	mg_mqtt_pub(node_obj.mgc, &topic_str, &data_n);
 	node_unlock();
 _OUT:
@@ -89,11 +94,12 @@ int mqtt_deinit(void)
 		free(node_obj.sub_obj[i].topic);
 	}
 	/*destroy node thread*/
-
+	//pthread_cancel(_node_thread)
 	pthread_mutex_destroy(&node_mutex);
 }
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+	//printf("enter fun, ev: %d\n", ev);
 	if (ev == MG_EV_ERROR) {
 		// On error, log error message
 		LOG(LL_ERROR, ("%p %s", c->fd, (char *) ev_data));
@@ -106,13 +112,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 	} else if (ev == MG_EV_MQTT_OPEN) {
 		node_obj.state = true;
 		// MQTT connect is successful
-		struct mg_str topic = mg_str(s_topic), data = mg_str("hello");
+		//struct mg_str topic = mg_str(s_topic), data = mg_str("hello");
 		LOG(LL_INFO, ("CONNECTED to %s", s_url));
-		mg_mqtt_sub(c, &topic);
-		LOG(LL_INFO, ("SUBSCRIBED to %.*s", (int) topic.len, topic.ptr));
-		mg_mqtt_pub(c, &topic, &data);
-		LOG(LL_INFO, ("PUBSLISHED %.*s -> %.*s", (int) data.len, data.ptr,
-					(int) topic.len, topic.ptr));
+		//mg_mqtt_sub(c, &topic);
+		//LOG(LL_INFO, ("SUBSCRIBED to %.*s", (int) topic.len, topic.ptr));
+		//mg_mqtt_pub(c, &topic, &data);
+		//LOG(LL_INFO, ("PUBSLISHED %.*s -> %.*s", (int) data.len, data.ptr,
+		//			(int) topic.len, topic.ptr));
 	} else if (ev == MG_EV_MQTT_MSG) {
 		// When we get echo response, print it
 		struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
@@ -147,10 +153,19 @@ void *_node_loop(void *arg)
 	bool done = false;         // Event handler flips it to true when done
 	mg_mgr_init(&(node_obj.mgr));         // Initialise event manager
 	memset(&opts, 0, sizeof(opts));                 // Set MQTT options
-	opts.qos = 1;                                   // Set QoS to 1
+	opts.qos = 0;                                   // Set QoS to 1
 	opts.will_topic = mg_str(s_topic);              // Set last will topic
 	opts.will_message = mg_str("goodbye");          // And last will message
 	node_obj.mgc = mg_mqtt_connect(&(node_obj.mgr), s_url, &opts, fn, &done);  // Create client connection
-	while (done == false) mg_mgr_poll(&(node_obj.mgr), 1000);  // Event loop
+	while (done == false) {
+		node_lock();
+		mg_mgr_poll(&(node_obj.mgr), 100);  // Event loop
+		node_unlock();
+		usleep(1000);
+	}
 	node_obj.state = false;
+	printf("exit node loop\n");
+	pthread_exit((void*)0);
+	mqtt_deinit();
+	mqtt_init();
 }
