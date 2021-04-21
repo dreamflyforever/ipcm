@@ -755,7 +755,11 @@ static void static_cb(struct mg_connection *c, int ev, void *ev_data,
     // Read to send IO buffer directly, avoid extra on-stack buffer
     size_t n, max = 2 * MG_IO_SIZE;
     if (c->send.size < max) mg_iobuf_resize(&c->send, max);
-    if (c->send.len >= c->send.size) return;  // Rate limit
+    if (c->send.len >= c->send.size) {
+    	printf("send data > buffer\n");
+	sleep(10);
+    	return;  // Rate limit
+    }
     n = fread(c->send.buf + c->send.len, 1, c->send.size - c->send.len, fp);
     if (n > 0) c->send.len += n;
     if (c->send.len < c->send.size) restore_http_cb(c);
@@ -1625,7 +1629,7 @@ struct mg_connection *mg_connect(struct mg_mgr *mgr, const char *url,
   if (c == NULL) return c;
   c->next = mgr->conns;
   mgr->conns = c;
-  // mg_set_non_blocking_mode((SOCKET) c->fd);
+  mg_set_non_blocking_mode((SOCKET) c->fd);
   c->is_client = 1;
   c->peer.port = mg_htons(mg_url_port(url));
   c->fn = fn;

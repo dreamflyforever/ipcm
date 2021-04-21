@@ -1,5 +1,9 @@
 ## ipcm
-Process communicate by mqtt.
+Process communicate by mqtt, library based on mongoose.
+
+## compile & run
+'scons' : ipcm_client & ipcm_server  
+export LD_LIBRARY_PATH=LD_LIBRARY_PATH:.
 
 ## license
 MIT by Jim

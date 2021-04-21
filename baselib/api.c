@@ -99,7 +99,7 @@ int mqtt_deinit(void)
 }
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-	//printf("enter fun, ev: %d\n", ev);
+	printf("enter fun, ev: %d\n", ev);
 	if (ev == MG_EV_ERROR) {
 		// On error, log error message
 		LOG(LL_ERROR, ("%p %s", c->fd, (char *) ev_data));
