@@ -96,6 +96,7 @@ int mqtt_deinit(void)
 	/*destroy node thread*/
 	//pthread_cancel(_node_thread)
 	pthread_mutex_destroy(&node_mutex);
+	return 0;
 }
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
