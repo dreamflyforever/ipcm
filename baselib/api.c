@@ -2,7 +2,7 @@
 #include "api.h"
 
 static pthread_mutex_t node_mutex;
-#if 1
+#if 0
 #define  node_lock()  pthread_mutex_lock(&node_mutex); printf("[%s %d]lock\n", __func__, __LINE__)
 #define  node_unlock()  pthread_mutex_unlock(&node_mutex); printf("[%s %d]unlock\n", __func__, __LINE__)
 #else
@@ -100,7 +100,6 @@ int mqtt_deinit(void)
 }
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-	printf("enter fun, ev: %d\n", ev);
 	if (ev == MG_EV_ERROR) {
 		// On error, log error message
 		LOG(LL_ERROR, ("%p %s", c->fd, (char *) ev_data));
