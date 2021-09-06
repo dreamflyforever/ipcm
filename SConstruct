@@ -4,7 +4,7 @@ env = Environment(CPPPATH = ['baselib', 'client', 'server'])
 env.SharedLibrary('ipcm', ['baselib/mongoose.c', 'baselib/api.c'],
 		CFLAGS = ['-g', '-fcolor-diagnostics'], CC = 'clang')
 src = Glob('client/example.c')
-ipmc_client = env.Program('ipmc_client',
+ipcm_client = env.Program('ipcm_client',
 		src,
 		LIBS = ['ipcm', 'pthread'],
         	LIBPATH = ['.'], 
@@ -12,7 +12,7 @@ ipmc_client = env.Program('ipmc_client',
 
 src = Glob('server/example.c')
 
-ipmc_server = env.Program('ipmc_server',
+ipcm_server = env.Program('ipcm_server',
 		src,
 		LIBS = ['ipcm', 'pthread'],
         	LIBPATH = ['.'], 
